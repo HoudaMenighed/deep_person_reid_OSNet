@@ -189,7 +189,7 @@ class ImageDataManager(DataManager):
             use_gpu=use_gpu
         )
 
-        print('=> Loading train (source) dataset')
+        print('=> Loading train (sourciiiiiiiiiiie) dataset')
         trainset = []
         for name in self.sources:
             trainset_ = init_image_dataset(
@@ -233,7 +233,7 @@ class ImageDataManager(DataManager):
             assert len(set(self.sources) & set(self.targets)) == 0, \
                 'sources={} and targets={} must not have overlap'.format(self.sources, self.targets)
 
-            print('=> Loading train (target) dataset')
+            print('=> Loading train (targetoooooooooooooo) dataset')
             trainset_t = []
             for name in self.targets:
                 trainset_t_ = init_image_dataset(
@@ -268,7 +268,7 @@ class ImageDataManager(DataManager):
                 drop_last=True
             )
 
-        print('=> Loading test (target) dataset')
+        print('=> Loading test (targetooooooo) dataset')
         self.test_loader = {
             name: {
                 'query': None,
@@ -333,7 +333,7 @@ class ImageDataManager(DataManager):
 
         print('\n')
         print('  **************** Summary ****************')
-        print('  source            : {}'.format(self.sources))
+        print('  source    khkh        : {}'.format(self.sources))
         print('  # source datasets : {}'.format(len(self.sources)))
         print('  # source ids      : {}'.format(self.num_train_pids))
         print('  # source images   : {}'.format(len(trainset)))
