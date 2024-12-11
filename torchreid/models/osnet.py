@@ -124,6 +124,50 @@ class Conv3x3(nn.Module):
         x = self.relu(x)
         return x
 
+class HarrisLayer(nn.Module):
+    """Layer to compute Harris corner response for feature maps."""
+
+    def __init__(self):
+        super(HarrisLayer, self).__init__()
+        # Sobel filters for gradients
+        self.sobel_x = nn.Conv2d(1, 1, kernel_size=3, padding=1, bias=False)
+        self.sobel_y = nn.Conv2d(1, 1, kernel_size=3, padding=1, bias=False)
+        # Gaussian filter for smoothing
+        self.gaussian = nn.Conv2d(1, 1, kernel_size=3, padding=1, bias=False)
+
+        # Initialize Sobel filters
+        self.sobel_x.weight.data = torch.tensor([[[[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]]]], dtype=torch.float32)
+        self.sobel_y.weight.data = torch.tensor([[[[-1, -2, -1], [0, 0, 0], [1, 2, 1]]]], dtype=torch.float32)
+        # Initialize Gaussian filter
+        self.gaussian.weight.data = torch.tensor([[[[1/16, 2/16, 1/16], [2/16, 4/16, 2/16], [1/16, 2/16, 1/16]]]], dtype=torch.float32)
+
+        # Freeze weights to ensure no learning
+        for param in self.parameters():
+            param.requires_grad = False
+
+    def forward(self, x):
+        # Assume input x is grayscale (1 channel per feature map)
+        Ix = self.sobel_x(x)
+        Iy = self.sobel_y(x)
+        Ixx = Ix * Ix
+        Iyy = Iy * Iy
+        Ixy = Ix * Iy
+
+        # Smooth gradients using Gaussian
+        Ixx = self.gaussian(Ixx)
+        Iyy = self.gaussian(Iyy)
+        Ixy = self.gaussian(Ixy)
+
+        # Harris response
+        det = Ixx * Iyy - Ixy * Ixy
+        trace = Ixx + Iyy
+        response = det - 0.04 * (trace ** 2)  # Harris constant k = 0.04
+
+        # Apply ReLU to keep only positive responses
+        response = F.relu(response)
+
+        return response
+
 
 class LightConv3x3(nn.Module):
     """Lightweight 3x3 convolution.
@@ -306,6 +350,9 @@ class OSNet(nn.Module):
         self.loss = loss
         self.feature_dim = feature_dim
 
+        # HarrisLayer
+        self.harris_layer = HarrisLayer()
+
         # convolutional backbone
         self.conv1 = ConvLayer(3, channels[0], 7, stride=2, padding=3, IN=IN)
         self.maxpool = nn.MaxPool2d(3, stride=2, padding=1)
@@ -413,6 +460,12 @@ class OSNet(nn.Module):
     def featuremaps(self, x):
         x = self.conv1(x)
         x = self.maxpool(x)
+
+        # Extract Harris responses
+        harris_response = self.harris_layer(x)
+
+        # Concatenate Harris responses with original features
+        x = torch.cat([x, harris_response], dim=1)
         x = self.conv2(x)
         x = self.conv3(x)
         x = self.conv4(x)
